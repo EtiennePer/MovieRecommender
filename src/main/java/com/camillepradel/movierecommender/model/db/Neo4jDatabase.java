@@ -3,25 +3,61 @@ package com.camillepradel.movierecommender.model.db;
 import com.camillepradel.movierecommender.model.Genre;
 import com.camillepradel.movierecommender.model.Movie;
 import com.camillepradel.movierecommender.model.Rating;
+
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.List;
 
-public class Neo4jDatabase extends AbstractDatabase {
+import org.neo4j.driver.v1.AuthTokens;
+import org.neo4j.driver.v1.Driver;
+import org.neo4j.driver.v1.GraphDatabase;
+import org.neo4j.driver.v1.Record;
+import org.neo4j.driver.v1.Session;
+import org.neo4j.driver.v1.StatementResult;
+import org.springframework.http.MediaType;
+import org.springframework.web.bind.annotation.GetMapping;
 
+public class Neo4jDatabase extends AbstractDatabase implements AutoCloseable {
+	private Driver driver;
+	
+	private static String uri = "bolt://localhost:7687";
+
+	
+	public Neo4jDatabase() {
+		driver = GraphDatabase.driver( uri );
+		System.out.println(driver.session().isOpen());
+	}
+	   @Override
+	    public void close() throws Exception
+	    {
+	        driver.close();
+	    }
     @Override
     public List<Movie> getAllMovies() {
-        // TODO: write query to retrieve all movies from DB
-        List<Movie> movies = new LinkedList<Movie>();
-        Genre genre0 = new Genre(0, "genre0");
-        Genre genre1 = new Genre(1, "genre1");
-        Genre genre2 = new Genre(2, "genre2");
-        movies.add(new Movie(0, "Titre 0", Arrays.asList(new Genre[]{genre0, genre1})));
-        movies.add(new Movie(1, "Titre 1", Arrays.asList(new Genre[]{genre0, genre2})));
-        movies.add(new Movie(2, "Titre 2", Arrays.asList(new Genre[]{genre1})));
-        movies.add(new Movie(3, "Titre 3", Arrays.asList(new Genre[]{genre0, genre1, genre2})));
-        return movies;
+    	 StatementResult result ;
+    	   try (Session session = driver.session()) { 
+    		    result  = session.run("MATCH (m:Movie)-[r:CATEGORIZED_AS]->(g:Genre) RETURN g.id as genreId,g.name as genreTitle, m.id AS id,m.title AS title ");
+           }
+    	   List<Movie> movies = new LinkedList<Movie>();
+    	      // Each Cypher execution returns a stream of records.
+           while (result.hasNext())
+           {
+               Record record = result.next();
+               List<Genre> listeGenre=new ArrayList<>();
+               Genre g = new Genre(record.get("genreId").asInt(), record.get("genreTitle").asString());
+               listeGenre.add(g);
+               Movie m = new Movie(record.get("id").asInt(), record.get("title").asString(),  listeGenre);
+               // Values can be extracted from a record by index or name.
+               movies.add(m);
+           }
+           
+   
+           return movies;
+  
     }
+    
+ 
 
     @Override
     public List<Movie> getMoviesRatedByUser(int userId) {
