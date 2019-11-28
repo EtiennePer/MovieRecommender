@@ -2,10 +2,14 @@ package com.camillepradel.movierecommender.model;
 
 import java.util.Arrays;
 
+import com.google.gson.annotations.SerializedName;
+
 public class Rating {
 
     private Movie movie;
+    @SerializedName("user_id")
     private int userId;
+    @SerializedName("rating")
     private int score;
 
     public Rating() {
