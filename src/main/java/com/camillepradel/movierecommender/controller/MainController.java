@@ -2,6 +2,7 @@ package com.camillepradel.movierecommender.controller;
 
 import java.util.List;
 
+import com.camillepradel.movierecommender.model.db.Neo4jDatabase;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -29,7 +30,7 @@ public class MainController {
     public void init() {
     //    this.db = new MySqlDatabase();
     	this.db = new Neo4jDatabase();
-       // this.db = new MongodbDatabase();
+        this.db = new MongodbDatabase();
     }
     
     @RequestMapping("/hello")

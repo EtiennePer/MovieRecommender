@@ -60,11 +60,22 @@ public class MongodbDatabase extends AbstractDatabase {
 
 		List<Movie> movies = new LinkedList<Movie>();
 		MongoCollection<Document> collection = database.getCollection("movies");
+		MongoCollection<Document> genres = database.getCollection("genres");
+		MongoCollection<Document> mov_genres = database.getCollection("mov_genre");
 
 		Gson gson = new Gson();
 
-		for (Document cur : collection.find()) {
-			movies.add(gson.fromJson(cur.toJson(), Movie.class));
+		for (Document mov : collection.find()) {
+			// recherche le mov_genre
+			Document mov_genre = mov_genres.find(new Document("mov_id", mov.get("id"))).first();
+			Document genre = genres.find(new Document("id", mov_genre.get("genre"))).first();
+
+			Movie movie = gson.fromJson(mov.toJson(), Movie.class);
+			Genre g = gson.fromJson(genre.toJson(), Genre.class);
+
+			movie.setGenres(new ArrayList<>());
+			movie.getGenres().add(g);
+			movies.add(movie);
 		}
 
 		return movies;
