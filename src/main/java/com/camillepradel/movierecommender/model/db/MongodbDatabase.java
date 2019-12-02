@@ -125,9 +125,6 @@ public class MongodbDatabase extends AbstractDatabase {
 
 	@Override
 	public void addOrUpdateRating(Rating rating) {
-		// TODO: add query which
-		// - add rating between specified user and movie if it doesn't exist
-		// - update it if it does exist
 		Document newRating = new Document();
 		newRating.append("user_id", rating.getUserId());
 		newRating.append("mov_id", rating.getMovieId());

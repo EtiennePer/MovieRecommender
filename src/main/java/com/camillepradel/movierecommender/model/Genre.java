@@ -10,7 +10,7 @@ public class Genre {
         this.name = name;
     }
 
-    public long getId() {
+    public int getId() {
         return this.id;
     }
 

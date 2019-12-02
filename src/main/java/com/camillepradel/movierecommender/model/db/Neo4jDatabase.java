@@ -37,7 +37,7 @@ public class Neo4jDatabase extends AbstractDatabase implements AutoCloseable {
     public List<Movie> getAllMovies() {
     	 StatementResult result ;
     	   try (Session session = driver.session()) { 
-    		    result  = session.run("MATCH (m:Movie)-[r:CATEGORIZED_AS]->(g:Genre) RETURN g.id as genreId,g.name as genreTitle, m.id AS id,m.title AS title ");
+    		    result  = session.run("MATCH (m:Movie) RETURN m.id AS id,m.title AS title ");
            }
     	   List<Movie> movies = new LinkedList<Movie>();
     	      // Each Cypher execution returns a stream of records.
@@ -45,8 +45,12 @@ public class Neo4jDatabase extends AbstractDatabase implements AutoCloseable {
            {
                Record record = result.next();
                List<Genre> listeGenre=new ArrayList<>();
-               Genre g = new Genre(record.get("genreId").asInt(), record.get("genreTitle").asString());
-               listeGenre.add(g);
+               for(Genre g: getListGenres(record.get("id").asInt())) {
+            		 Genre genre = new Genre(g.getId(),g.getName());
+            	   listeGenre.add(genre);
+               }
+             
+            
                Movie m = new Movie(record.get("id").asInt(), record.get("title").asString(),  listeGenre);
                // Values can be extracted from a record by index or name.
                movies.add(m);
@@ -63,7 +67,7 @@ public class Neo4jDatabase extends AbstractDatabase implements AutoCloseable {
     public List<Movie> getMoviesRatedByUser(int userId) {
    	 StatementResult result ;
 	   try (Session session = driver.session()) { 
-		    result  = session.run("MATCH(u:User{id:"+userId+"})-[rt:RATED]-(m:Movie)-[r:CATEGORIZED_AS]->(g:Genre) RETURN g.id as genreId,g.name as genreTitle, m.id AS id,m.title AS title ");
+		    result  = session.run("MATCH(u:User{id:"+userId+"})-[rt:RATED]-(m:Movie) RETURN m.id AS id,m.title AS title ");
      }
 	   List<Movie> movies = new LinkedList<Movie>();
 	      // Each Cypher execution returns a stream of records.
@@ -71,8 +75,12 @@ public class Neo4jDatabase extends AbstractDatabase implements AutoCloseable {
      {
          Record record = result.next();
          List<Genre> listeGenre=new ArrayList<>();
-         Genre g = new Genre(record.get("genreId").asInt(), record.get("genreTitle").asString());
-         listeGenre.add(g);
+         for(Genre g: getListGenres(record.get("id").asInt())) {
+        	 Genre genre = new Genre(g.getId(),g.getName());
+        	  listeGenre.add(genre);
+         }
+        
+       
          Movie m = new Movie(record.get("id").asInt(), record.get("title").asString(),  listeGenre);
          // Values can be extracted from a record by index or name.
          movies.add(m);
@@ -82,23 +90,74 @@ public class Neo4jDatabase extends AbstractDatabase implements AutoCloseable {
      return movies;
 
     }
+    
+    public List<Genre> getListGenres(int filmId) {
+      	 StatementResult result ;
+  	   try (Session session = driver.session()) { 
+  		    result  = session.run("MATCH(m:Movie{id:"+filmId+"})-[:CATEGORIZED_AS]->(g:Genre) RETURN g.id as genreId,g.name as genreTitle ");
+       }
+  	   List<Genre> listGenres = new LinkedList<Genre>();
+  	      // Each Cypher execution returns a stream of records.
+       while (result.hasNext())
+       {
+           Record record = result.next();
+           Genre g = new Genre(record.get("genreId").asInt(), record.get("genreTitle").asString());
+           listGenres.add(g);
+       }
+       return listGenres;
+    }
 
     @Override
     public List<Rating> getRatingsFromUser(int userId) {
-        // TODO: write query to retrieve all ratings from user with id userId
-        List<Rating> ratings = new LinkedList<Rating>();
-        Genre genre0 = new Genre(0, "genre0");
-        Genre genre1 = new Genre(1, "genre1");
-        ratings.add(new Rating(new Movie(0, "Titre 0", Arrays.asList(new Genre[]{genre0, genre1})), userId, 3));
-        ratings.add(new Rating(new Movie(2, "Titre 2", Arrays.asList(new Genre[]{genre1})), userId, 4));
-        return ratings;
+      
+      	 StatementResult result ;
+  	   try (Session session = driver.session()) { 
+  		    result  = session.run("MATCH (u:User{id:"+userId+"})-[r:RATED]->(m:Movie) return r.note as note, r.timestamp as timestamp,m.id as id, m.title as title");
+       }
+  	 List<Rating> ratings = new LinkedList<Rating>();
+  	      // Each Cypher execution returns a stream of records.
+       while (result.hasNext())
+       {
+           Record record = result.next();
+        
+           List<Genre> listeGenre=new ArrayList<>();
+           for(Genre g: getListGenres(record.get("id").asInt())) {
+          	 Genre genre = new Genre(g.getId(),g.getName());
+          	  listeGenre.add(genre);
+           }
+          
+           Movie m = new Movie(record.get("id").asInt(), record.get("title").asString(),  listeGenre);
+           Rating r = new Rating();
+           r.setMovie(m);
+           r.setScore(record.get("note").asInt());
+           r.setUserId(userId);
+           
+           
+
+           // Values can be extracted from a record by index or name.
+           ratings.add(r);
+       }
+       
+
+       return ratings;
     }
 
     @Override
     public void addOrUpdateRating(Rating rating) {
-        // TODO: add query which
-        //         - add rating between specified user and movie if it doesn't exist
-        //         - update it if it does exist
+    	 StatementResult result ;
+    	 
+    	   try (Session session = driver.session()) { 
+    		    result  = session.run("MATCH (u:User{id:"+rating.getUserId()+"})-[r:RATED]->(m:Movie{id:"+rating.getMovieId()+"}) RETURN count(r) as count");
+         
+    		  	   if(result.hasNext() && result.next().get("count").asInt()==1) {
+    	    		   result  = session.run("MATCH (u:User{id:"+rating.getUserId()+"})-[r:RATED]->(m:Movie{id:"+rating.getMovieId()+"}) SET r.note="+rating.getScore());
+    	    	   }else {
+    	    		   result  = session.run("MATCH (u:User{id:"+rating.getUserId()+"}),(m:Movie{id:"+rating.getMovieId()+"}) "
+    	    		   		+ "CREATE (u)-[r:RATED]->(m) SET r.timestamp=TIMESTAMP()/1000 SET r.note="+rating.getScore());
+    	    	   }
+    	   }
+  
+    	  
     }
 
     @Override
