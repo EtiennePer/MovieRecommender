@@ -3,38 +3,31 @@ package com.camillepradel.movierecommender.model.db;
 import com.camillepradel.movierecommender.model.Genre;
 import com.camillepradel.movierecommender.model.Movie;
 import com.camillepradel.movierecommender.model.Rating;
+import org.neo4j.driver.v1.*;
 
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.List;
 
-import org.neo4j.driver.v1.AuthTokens;
-import org.neo4j.driver.v1.Driver;
-import org.neo4j.driver.v1.GraphDatabase;
-import org.neo4j.driver.v1.Record;
-import org.neo4j.driver.v1.Session;
-import org.neo4j.driver.v1.StatementResult;
-import org.springframework.http.MediaType;
-import org.springframework.web.bind.annotation.GetMapping;
 
 public class Neo4jDatabase extends AbstractDatabase implements AutoCloseable {
-	private Driver driver;
-	
-	private static String uri = "bolt://localhost:7687";
+    private static String uri = "bolt://localhost:7687";
+    private Driver driver;
 
-	
-	public Neo4jDatabase() {
-		driver = GraphDatabase.driver( uri );
-		System.out.println(driver.session().isOpen());
-	}
-	   @Override
-	    public void close() throws Exception
-	    {
-	        driver.close();
-	    }
+    public Neo4jDatabase() {
+        driver = GraphDatabase.driver(uri);
+        System.out.println(driver.session().isOpen());
+    }
+
+    @Override
+    public void close() throws Exception {
+        driver.close();
+    }
+
     @Override
     public List<Movie> getAllMovies() {
+
     	 StatementResult result ;
     	   try (Session session = driver.session()) { 
     		    result  = session.run("MATCH (m:Movie) RETURN m.id AS id,m.title AS title ");
@@ -60,8 +53,7 @@ public class Neo4jDatabase extends AbstractDatabase implements AutoCloseable {
            return movies;
   
     }
-    
- 
+
 
     @Override
     public List<Movie> getMoviesRatedByUser(int userId) {
@@ -88,7 +80,6 @@ public class Neo4jDatabase extends AbstractDatabase implements AutoCloseable {
      
 
      return movies;
-
     }
     
     public List<Genre> getListGenres(int filmId) {
